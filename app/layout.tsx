@@ -1,15 +1,10 @@
-import type { Metadata, Viewport } from 'next'
+import type { Metadata } from 'next'
 import './globals.css'
 
 export const metadata: Metadata = {
   title: 'NicheLead AI — Niche-specific Lead Generation',
   description: 'AI-powered lead generation for Personal Trainers, Estheticians, Roofers, and Realtors.',
-}
-
-export const viewport: Viewport = {
-  width: 'device-width',
-  initialScale: 1,
-  maximumScale: 1,
+  viewport: 'width=device-width, initial-scale=1, maximum-scale=1',
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
