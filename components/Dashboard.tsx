@@ -164,9 +164,24 @@ function LeadProfilePanel({ lead, niche, onClose, onContact }: {
           </div>
 
           {/* Pipeline stage */}
-          <div className="mb-4">
+          <div className="mb-5">
             <h4 className="text-[10px] font-bold uppercase tracking-widest mb-2.5" style={{ color: MUTED }}>PIPELINE STAGE</h4>
             <StageSelector stage={stage} onChange={setStage} accent={niche.accent} />
+          </div>
+
+          {/* Notes */}
+          <div className="mb-2">
+            <h4 className="text-[10px] font-bold uppercase tracking-widest mb-2" style={{ color: MUTED }}>NOTES</h4>
+            <textarea
+              rows={3}
+              placeholder="Add context, call outcomes, follow-up reminders…"
+              className="w-full rounded-xl px-4 py-3 text-[13px] leading-relaxed resize-none outline-none"
+              style={{ background: CARD2, border: `1px solid ${BORDER}`, color: TEXT }}
+            />
+            <button className="mt-2 px-4 py-2 rounded-xl text-[13px] font-semibold"
+              style={{ background: FAINT, color: MUTED }}>
+              Save notes
+            </button>
           </div>
         </div>
 
@@ -361,16 +376,16 @@ function FilterSheet({ niche, open, onClose, active, setActive }: {
 function StatCard({ stat, accent }: { stat: typeof NICHES['trainer']['stats'][number]; accent: string }) {
   const Icon = ICON_MAP[stat.iconName] || Search
   return (
-    <div className="shrink-0 rounded-2xl p-4 flex-1"
-      style={{ background: CARD2, border: `1px solid ${BORDER}`, minWidth: 140 }}>
-      <div className="flex items-center justify-between mb-2">
+    <div className="shrink-0 rounded-2xl p-4"
+      style={{ background: CARD2, border: `1px solid ${BORDER}`, minWidth: 150, flex: '1 1 0' }}>
+      <div className="flex items-center justify-between mb-3">
         <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: MUTED }}>{stat.label}</span>
-        <Icon size={16} style={{ color: accent }} strokeWidth={2} />
+        <div className="rounded-lg flex items-center justify-center"
+          style={{ width: 30, height: 30, background: `${accent}18` }}>
+          <Icon size={16} style={{ color: accent }} strokeWidth={2} />
+        </div>
       </div>
-      <div className="text-[28px] font-bold leading-none tracking-tight" style={{ color: TEXT }}>{stat.value}</div>
-      <div className="flex items-center gap-1 mt-1.5 text-[12px] font-semibold" style={{ color: accent }}>
-        <TrendingUp size={12} /> {stat.delta} this week
-      </div>
+      <div className="text-[32px] font-bold leading-none tracking-tight" style={{ color: TEXT }}>{stat.value}</div>
     </div>
   )
 }
@@ -695,6 +710,11 @@ export default function Dashboard({ initialNiche, onBack }: { initialNiche: Nich
                   <span className="text-[10px] font-bold px-1.5 rounded-full text-white"
                     style={{ background: niche.accent }}>{activeChips.length}</span>
                 )}
+              </button>
+              <button onClick={() => setOutreachLead(leads[0] as Lead)}
+                className="flex items-center gap-1.5 px-3 py-2.5 rounded-xl text-[13px] font-semibold text-white"
+                style={{ background: niche.accent }}>
+                <MessageSquare size={15} /> Templates
               </button>
             </section>
 
