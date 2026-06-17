@@ -4,7 +4,7 @@ import {
   Dumbbell, Sparkles, Home, Building2, LayoutDashboard, Users, Send,
   BarChart3, Settings, SlidersHorizontal, MessageSquareText, X, Copy,
   Check, Search, Bell, ChevronRight, Flame, Clock, MapPin, Target,
-  CalendarCheck, DollarSign, FileText, ShieldCheck, TrendingUp, ArrowUpRight,
+  CalendarCheck, DollarSign, FileText, ShieldCheck, TrendingUp,
 } from 'lucide-react'
 import { BarChart, Bar, XAxis, ResponsiveContainer, Cell } from 'recharts'
 import { NICHES, LEADS, type NicheKey } from '@/lib/data'
@@ -318,16 +318,16 @@ export default function NicheLeadApp() {
 
   return (
     <div className="min-h-screen w-full flex justify-center" style={{ background: '#EEF1F4' }}>
-      <div className="relative w-full bg-[#F6F7F9] flex flex-col md:max-w-[1100px]"
-        style={{ minHeight: '100vh', boxShadow: '0 0 60px rgba(15,23,42,0.08)' }}>
+      <div className="relative w-full bg-[#F6F7F9] flex flex-col"
+        style={{ maxWidth: 440, minHeight: '100vh', boxShadow: '0 0 60px rgba(15,23,42,0.08)' }}>
 
         {/* TOP BAR */}
         <header className="sticky top-0 z-30 bg-white/90 backdrop-blur border-b border-slate-100">
           <div className="px-4 pt-3.5 pb-2 flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <div className="rounded-xl flex items-center justify-center font-bold"
-                style={{ width: 30, height: 30, background: '#0F172A' }}>
-                <span style={{ color: '#22C55E', fontSize: 15, fontFamily: 'Georgia, serif' }}>G</span>
+              <div className="rounded-xl flex items-center justify-center"
+                style={{ width: 30, height: 30, background: niche.accent }}>
+                <span className="text-white font-bold text-sm">N</span>
               </div>
               <div>
                 <div className="font-bold text-slate-900 text-[15px] leading-none tracking-tight">NicheLead AI</div>
@@ -335,10 +335,6 @@ export default function NicheLeadApp() {
               </div>
             </div>
             <div className="flex items-center gap-1.5">
-              <a href="https://tanxusa.com" target="_blank" rel="noopener noreferrer"
-                className="hidden sm:inline-flex items-center gap-1 text-[11px] font-semibold px-2.5 py-1.5 rounded-lg border border-slate-200 text-slate-500 mr-1">
-                TanXUSA.com <ArrowUpRight size={12} />
-              </a>
               <button className="p-2 text-slate-400 relative">
                 <Bell size={19} />
                 <span className="absolute top-1.5 right-1.5 rounded-full"
@@ -398,7 +394,7 @@ export default function NicheLeadApp() {
                   ))}
                 </div>
               )}
-              <section className="px-4 pt-2 pb-28 grid grid-cols-1 md:grid-cols-2 gap-3">
+              <section className="px-4 pt-2 pb-28 flex flex-col gap-3">
                 {leads.map(lead => (
                   <LeadCard key={lead.name} nicheKey={nicheKey} lead={lead as any}
                     accent={niche.accent} soft={niche.soft} />
