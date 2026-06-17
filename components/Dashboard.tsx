@@ -6,7 +6,8 @@ import {
   TrendingUp, ArrowLeft, Zap, Send, BarChart3, Settings,
   Users, LayoutDashboard, DollarSign, FileText, ShieldCheck,
   Target, MapPin, Flame, CalendarCheck, MessageSquare,
-  ChevronRight, Clock,
+  ChevronRight, Clock, GitBranch, Megaphone, Plus,
+  Mail, MessageCircle, Play, Pause, User,
 } from 'lucide-react'
 import { BarChart, Bar, XAxis, ResponsiveContainer, Cell } from 'recharts'
 import { NICHES, LEADS, type NicheKey, type Lead } from '@/lib/data'
@@ -221,7 +222,7 @@ function OutreachPanel({ lead, niche, onClose }: {
     .replace(/\{\{area\}\}/g, lead.location.split(',')[0])
     .replace(/\{\{budget\}\}/g, lead.tags[0] || 'your budget')
 
-  const subject = `${firstName}, let's talk ${lead.tags[0] || niche.short} ✨`
+  const subject = tpl.subject || `${firstName}, let's talk ${lead.tags[0] || niche.short} ✨`
 
   const doCopy = () => {
     try { navigator.clipboard?.writeText(body) } catch {}
@@ -395,6 +396,16 @@ function LeadCard({ lead, niche, onProfile, onContact }: {
   lead: Lead; niche: typeof NICHES[NicheKey]; onProfile: () => void; onContact: () => void
 }) {
   const c = scoreColor(lead.score)
+  const stageLabel = lead.stage.charAt(0).toUpperCase() + lead.stage.slice(1)
+  const stageBg = lead.stage === 'qualified' ? 'rgba(34,197,94,0.12)'
+    : lead.stage === 'contacted' ? 'rgba(245,158,11,0.12)'
+    : lead.stage === 'converted' ? 'rgba(99,102,241,0.12)'
+    : FAINT
+  const stageFg = lead.stage === 'qualified' ? '#4ADE80'
+    : lead.stage === 'contacted' ? '#FCD34D'
+    : lead.stage === 'converted' ? '#818CF8'
+    : MUTED
+
   return (
     <div className="rounded-2xl p-4" style={{ background: CARD, border: `1px solid ${BORDER}` }}>
       <div className="flex gap-3">
@@ -413,7 +424,7 @@ function LeadCard({ lead, niche, onProfile, onContact }: {
                 style={{ background: `${niche.accent}25`, color: niche.accent }}>{lead.type}</span>
             )}
             <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full"
-              style={{ background: 'rgba(34,197,94,0.12)', color: '#4ADE80' }}>Qualified</span>
+              style={{ background: stageBg, color: stageFg }}>{stageLabel}</span>
           </div>
           <p className="text-[12px] mt-0.5 flex items-center gap-1" style={{ color: MUTED }}>
             <MapPin size={11} /> {lead.location} · {lead.timeAgo}
@@ -459,36 +470,184 @@ function LeadCard({ lead, niche, onProfile, onContact }: {
   )
 }
 
+// ── Pipeline Tab ──────────────────────────────────────────
+type StageKey = 'new' | 'qualified' | 'contacted' | 'converted'
+
+function PipelineTab({ leads, niche, onProfile }: {
+  leads: Lead[]; niche: typeof NICHES[NicheKey]; onProfile: (l: Lead) => void
+}) {
+  const [stages, setStages] = useState<Record<string, StageKey>>(
+    Object.fromEntries(leads.map(l => [l.name, l.stage as StageKey]))
+  )
+
+  const cols: { key: StageKey; label: string }[] = [
+    { key: 'new',       label: 'New' },
+    { key: 'qualified', label: 'Qualified' },
+    { key: 'contacted', label: 'Contacted' },
+    { key: 'converted', label: 'Converted' },
+  ]
+
+  const moveStage = (name: string, to: StageKey) => {
+    setStages(prev => ({ ...prev, [name]: to }))
+  }
+
+  const nextStage = (current: StageKey): StageKey | null => {
+    const order: StageKey[] = ['new', 'qualified', 'contacted', 'converted']
+    const idx = order.indexOf(current)
+    return idx < order.length - 1 ? order[idx + 1] : null
+  }
+
+  return (
+    <div className="px-4 lg:px-8 pt-5 pb-24 overflow-x-auto">
+      <div className="flex gap-4 min-w-max lg:min-w-0 lg:grid lg:grid-cols-4">
+        {cols.map(col => {
+          const colLeads = leads.filter(l => (stages[l.name] || l.stage) === col.key)
+          const colColor = col.key === 'qualified' ? '#22C55E'
+            : col.key === 'contacted' ? '#F59E0B'
+            : col.key === 'converted' ? '#818CF8'
+            : MUTED
+
+          return (
+            <div key={col.key} className="w-72 lg:w-auto">
+              {/* Column header */}
+              <div className="flex items-center gap-2 mb-3">
+                <span className="font-bold text-[13px]" style={{ color: colColor }}>{col.label}</span>
+                <span className="text-[12px] px-2 py-0.5 rounded-full font-semibold"
+                  style={{ background: FAINT, color: MUTED }}>{colLeads.length}</span>
+              </div>
+
+              {/* Cards */}
+              <div className="flex flex-col gap-3">
+                {colLeads.length === 0 ? (
+                  <div className="rounded-2xl p-4 text-center text-[13px]"
+                    style={{ background: CARD, border: `1px solid ${BORDER}`, color: MUTED }}>
+                    No leads
+                  </div>
+                ) : colLeads.map(lead => {
+                  const c = scoreColor(lead.score)
+                  const next = nextStage(stages[lead.name] as StageKey || col.key)
+                  return (
+                    <div key={lead.name} className="rounded-2xl p-3"
+                      style={{ background: CARD, border: `1px solid ${BORDER}` }}>
+                      <div className="flex items-center gap-2 mb-2">
+                        <div className="rounded-lg flex items-center justify-center font-bold text-white text-[12px] shrink-0"
+                          style={{ width: 32, height: 32, background: `linear-gradient(135deg, ${niche.accent}, ${niche.accent}88)` }}>
+                          {initials(lead.name)}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="font-semibold text-[13px] truncate" style={{ color: TEXT }}>{lead.name}</div>
+                          <div className="text-[11px]" style={{ color: MUTED }}>{lead.location}</div>
+                        </div>
+                        <div className="flex items-center justify-center rounded-full shrink-0"
+                          style={{ width: 32, height: 32, border: `2px solid ${c.ring}`, background: `${c.ring}18` }}>
+                          <span className="font-bold text-[11px]" style={{ color: c.fg }}>{lead.score}</span>
+                        </div>
+                      </div>
+                      <div className="flex flex-wrap gap-1 mb-2.5">
+                        {lead.tags.slice(0, 2).map(t => (
+                          <span key={t} className="px-1.5 py-0.5 rounded-full text-[10px] font-medium"
+                            style={{ background: `${niche.accent}18`, color: niche.accent }}>{t}</span>
+                        ))}
+                      </div>
+                      {next && (
+                        <button
+                          onClick={() => moveStage(lead.name, next)}
+                          className="w-full py-1.5 rounded-xl text-[12px] font-semibold"
+                          style={{ background: FAINT, color: MUTED, border: `1px solid ${BORDER}` }}>
+                          Move to {next.charAt(0).toUpperCase() + next.slice(1)}
+                        </button>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
 // ── Campaigns Tab ─────────────────────────────────────────
 function CampaignsTab({ niche }: { niche: typeof NICHES[NicheKey] }) {
-  const rows = [
-    { name: 'Cold DM — Week 1', sent: 120, reply: 28, status: 'Active' },
-    { name: 'Free Offer Blast',  sent:  86, reply: 19, status: 'Active' },
-    { name: 'Re-engagement',    sent:  54, reply:  7, status: 'Paused' },
-  ]
+  const [campaigns, setCampaigns] = useState([
+    { name: 'Complimentary Skin Consult', sent: 126, replyRate: 12, status: 'Active' as 'Active' | 'Paused', icon: 'email' },
+    { name: 'New Client Promo',           sent: 593, replyRate: 18, status: 'Paused' as 'Active' | 'Paused', icon: 'email' },
+    { name: 'SMS — Booking Reminder',     sent: 413, replyRate: 21, status: 'Active' as 'Active' | 'Paused', icon: 'sms'   },
+  ])
+
+  const toggle = (i: number) => {
+    setCampaigns(prev => prev.map((c, idx) =>
+      idx === i ? { ...c, status: c.status === 'Active' ? 'Paused' : 'Active' } : c
+    ))
+  }
+
   return (
-    <div className="px-4 pt-4 pb-12">
-      <h2 className="font-bold text-[18px] mb-4" style={{ color: TEXT }}>Campaigns</h2>
-      <div className="flex flex-col gap-3 lg:grid lg:grid-cols-2 lg:gap-4">
-        {rows.map(r => (
-          <div key={r.name} className="rounded-2xl p-4" style={{ background: CARD, border: `1px solid ${BORDER}` }}>
+    <div className="px-4 lg:px-8 pt-5 pb-24">
+      <div className="flex items-start justify-between mb-1">
+        <div>
+          <h2 className="font-bold text-[20px]" style={{ color: TEXT }}>Campaigns</h2>
+          <p className="text-[13px] mt-0.5" style={{ color: MUTED }}>Automated outreach sequences, powered by Zapier.</p>
+        </div>
+        <button className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-[13px] font-semibold text-white"
+          style={{ background: niche.accent }}>
+          <Plus size={15} /> New
+        </button>
+      </div>
+
+      {/* Banner */}
+      <div className="flex items-center gap-3 rounded-2xl px-4 py-3 mt-4 mb-5"
+        style={{ background: `${niche.accent}14`, border: `1px solid ${niche.accent}30` }}>
+        <Zap size={18} style={{ color: niche.accent }} />
+        <p className="text-[13px]" style={{ color: TEXT }}>
+          Outreach is fully automated — every campaign sends email &amp; SMS for you through the NicheLead backend. Just write your message and hit send.
+        </p>
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-2">
+        {campaigns.map((c, i) => (
+          <div key={c.name} className="rounded-2xl p-4" style={{ background: CARD, border: `1px solid ${BORDER}` }}>
             <div className="flex items-center justify-between mb-3">
-              <h3 className="font-semibold text-[15px]" style={{ color: TEXT }}>{r.name}</h3>
+              <div className="flex items-center gap-2">
+                {c.icon === 'sms'
+                  ? <MessageCircle size={18} style={{ color: niche.accent }} />
+                  : <Mail size={18} style={{ color: niche.accent }} />
+                }
+                <h3 className="font-semibold text-[15px]" style={{ color: TEXT }}>{c.name}</h3>
+              </div>
               <span className="text-[11px] font-bold px-2.5 py-1 rounded-full"
-                style={r.status === 'Active'
+                style={c.status === 'Active'
                   ? { background: `${niche.accent}20`, color: niche.accent }
                   : { background: FAINT, color: MUTED }}>
-                {r.status}
+                {c.status}
               </span>
             </div>
-            <div className="flex gap-6">
-              {[['Sent', r.sent], ['Replies', r.reply], ['Reply rate', `${Math.round(r.reply / r.sent * 100)}%`]].map(([l, v]) => (
-                <div key={l as string}>
-                  <div className="font-bold text-[20px]" style={{ color: TEXT }}>{v}</div>
-                  <div className="text-[11px] mt-0.5" style={{ color: MUTED }}>{l}</div>
-                </div>
-              ))}
+
+            <div className="flex gap-6 mb-3">
+              <div>
+                <div className="font-bold text-[22px]" style={{ color: TEXT }}>{c.sent}</div>
+                <div className="text-[11px]" style={{ color: MUTED }}>Sent</div>
+              </div>
+              <div>
+                <div className="font-bold text-[22px]" style={{ color: niche.accent }}>{c.replyRate}%</div>
+                <div className="text-[11px]" style={{ color: MUTED }}>Reply rate</div>
+              </div>
             </div>
+
+            {/* Progress bar */}
+            <div className="rounded-full overflow-hidden mb-3" style={{ height: 5, background: FAINT }}>
+              <div className="h-full rounded-full" style={{ width: `${c.replyRate}%`, background: niche.accent }} />
+            </div>
+
+            <button onClick={() => toggle(i)}
+              className="w-full py-2.5 rounded-xl font-semibold text-[13px] flex items-center justify-center gap-2"
+              style={{ background: FAINT, color: MUTED, border: `1px solid ${BORDER}` }}>
+              {c.status === 'Active'
+                ? <><Pause size={14} /> Pause</>
+                : <><Play size={14} /> Resume</>
+              }
+            </button>
           </div>
         ))}
       </div>
@@ -497,36 +656,80 @@ function CampaignsTab({ niche }: { niche: typeof NICHES[NicheKey] }) {
 }
 
 // ── Analytics Tab ─────────────────────────────────────────
-function AnalyticsTab({ niche }: { niche: typeof NICHES[NicheKey] }) {
-  const data = [
-    { d: 'Mon', v: 18 }, { d: 'Tue', v: 31 }, { d: 'Wed', v: 24 },
-    { d: 'Thu', v: 42 }, { d: 'Fri', v: 38 }, { d: 'Sat', v: 51 }, { d: 'Sun', v: 29 },
+function AnalyticsTab({ niche, leads }: { niche: typeof NICHES[NicheKey]; leads: Lead[] }) {
+  const hotCount  = leads.filter(l => l.score >= 85).length
+  const warmCount = leads.filter(l => l.score >= 70 && l.score < 85).length
+  const coolCount = leads.filter(l => l.score < 70).length
+  const total     = leads.length
+  const hotPct    = Math.round(hotCount / total * 100)
+
+  const weekData = [
+    { d: 'Mon', v: 20 },
+    { d: 'Tue', v: 31 },
+    { d: 'Wed', v: 86 },
+    { d: 'Thu', v: 55 },
+    { d: 'Fri', v: 57 },
+    { d: 'Sat', v: 25 },
+    { d: 'Sun', v: 96 },
   ]
-  const metrics: [string, string][] = [
-    ['Conversion rate', '8.5%'], ['Avg AI score', '78'], ['Reply rate', '23%'], ['Cost / lead', '$1.90'],
-  ]
+
   return (
-    <div className="px-4 pt-4 pb-12">
-      <h2 className="font-bold text-[18px] mb-4" style={{ color: TEXT }}>Analytics</h2>
-      <div className="rounded-2xl p-4 mb-4" style={{ background: CARD, border: `1px solid ${BORDER}` }}>
-        <div className="text-[12px] font-semibold" style={{ color: MUTED }}>New leads · last 7 days</div>
-        <div className="text-[28px] font-bold tracking-tight mt-0.5" style={{ color: TEXT }}>233</div>
+    <div className="px-4 lg:px-8 pt-5 pb-24">
+      <h2 className="font-bold text-[20px] mb-1" style={{ color: TEXT }}>Analytics</h2>
+      <p className="text-[13px] mb-5" style={{ color: MUTED }}>Lead quality and pipeline performance for {niche.label}.</p>
+
+      {/* Top metrics */}
+      <div className="grid grid-cols-3 gap-3 mb-5">
+        {[
+          { label: 'Avg AI Score', value: Math.round(leads.reduce((a, l) => a + l.score, 0) / total) },
+          { label: 'Hot Leads (85+)', value: `${hotPct}%` },
+          { label: 'Qualify Rate', value: `${Math.round((leads.filter(l => l.stage !== 'new').length / total) * 100)}%` },
+        ].map(m => (
+          <div key={m.label} className="rounded-2xl p-3 text-center" style={{ background: CARD, border: `1px solid ${BORDER}` }}>
+            <div className="font-bold text-[22px] tracking-tight" style={{ color: niche.accent }}>{m.value}</div>
+            <div className="text-[11px] mt-1" style={{ color: MUTED }}>{m.label}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Weekly chart */}
+      <div className="rounded-2xl p-4 mb-5" style={{ background: CARD, border: `1px solid ${BORDER}` }}>
+        <div className="text-[13px] font-semibold mb-1" style={{ color: TEXT }}>Leads discovered this week</div>
         <div style={{ width: '100%', height: 140 }} className="mt-3">
           <ResponsiveContainer>
-            <BarChart data={data} margin={{ top: 4, right: 0, left: 0, bottom: 0 }}>
+            <BarChart data={weekData} margin={{ top: 4, right: 0, left: 0, bottom: 0 }}>
               <XAxis dataKey="d" tickLine={false} axisLine={false} tick={{ fontSize: 11, fill: MUTED }} />
               <Bar dataKey="v" radius={[6, 6, 0, 0]}>
-                {data.map((_, i) => <Cell key={i} fill={i === 5 ? niche.accent : `${niche.accent}40`} />)}
+                {weekData.map((_, i) => (
+                  <Cell key={i} fill={i === 6 ? niche.accent : `${niche.accent}40`} />
+                ))}
               </Bar>
             </BarChart>
           </ResponsiveContainer>
         </div>
+        <div className="flex justify-between mt-1 text-[11px]" style={{ color: MUTED }}>
+          {weekData.map(d => (
+            <span key={d.d}>{d.v} leads</span>
+          ))}
+        </div>
       </div>
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        {metrics.map(([l, v]) => (
-          <div key={l} className="rounded-2xl p-4" style={{ background: CARD, border: `1px solid ${BORDER}` }}>
-            <div className="text-[24px] font-bold tracking-tight" style={{ color: TEXT }}>{v}</div>
-            <div className="text-[11px] mt-1" style={{ color: MUTED }}>{l}</div>
+
+      {/* Score distribution */}
+      <div className="rounded-2xl p-4" style={{ background: CARD, border: `1px solid ${BORDER}` }}>
+        <div className="font-semibold text-[14px] mb-3" style={{ color: TEXT }}>Score distribution</div>
+        {[
+          { label: '85-100 · Hot',    count: hotCount,  pct: hotPct,                              color: '#22C55E' },
+          { label: '70-84 · Warm',   count: warmCount, pct: Math.round(warmCount / total * 100), color: '#F59E0B' },
+          { label: 'Below 70 · Nurture', count: coolCount, pct: Math.round(coolCount / total * 100), color: '#64748B' },
+        ].map(row => (
+          <div key={row.label} className="mb-3">
+            <div className="flex justify-between mb-1">
+              <span className="text-[12px]" style={{ color: MUTED }}>{row.label}</span>
+              <span className="text-[12px] font-semibold" style={{ color: TEXT }}>{row.count} ({row.pct}%)</span>
+            </div>
+            <div className="rounded-full overflow-hidden" style={{ height: 6, background: FAINT }}>
+              <div className="h-full rounded-full" style={{ width: `${row.pct}%`, background: row.color }} />
+            </div>
           </div>
         ))}
       </div>
@@ -535,36 +738,167 @@ function AnalyticsTab({ niche }: { niche: typeof NICHES[NicheKey] }) {
 }
 
 // ── Settings Tab ──────────────────────────────────────────
-function SettingsTab() {
-  const groups: [string, string[]][] = [
-    ['Account', ['Profile', 'Business details', 'Connected inbox']],
-    ['Lead sourcing', ['Target niche', 'Search radius', 'Daily lead cap']],
-    ['Automation', ['Auto-score threshold', 'Outreach schedule', 'CRM sync']],
-  ]
+function SettingsTab({ niche }: { niche: typeof NICHES[NicheKey] }) {
+  const [name, setName]       = useState('Jordan Rivera')
+  const [biz, setBiz]         = useState('Glow Studio')
+  const [email, setEmail]     = useState('you@yourbusiness.com')
+  const [ig, setIg]           = useState('')
+  const [tiktok, setTiktok]   = useState('')
+  const [fb, setFb]           = useState('')
+  const [tw, setTw]           = useState('')
+  const [saved, setSaved]     = useState(false)
+  const [chatOn, setChatOn]   = useState(false)
+  const [tawkId, setTawkId]   = useState('')
+  const [widgetId, setWidgetId] = useState('default')
+
+  const doSave = () => { setSaved(true); setTimeout(() => setSaved(false), 2000) }
+
+  const inputStyle = {
+    background: CARD2, border: `1px solid ${BORDER}`, color: TEXT,
+    borderRadius: 12, padding: '10px 14px', fontSize: 14, width: '100%', outline: 'none',
+  }
+
   return (
-    <div className="px-4 pt-4 pb-12">
-      <h2 className="font-bold text-[18px] mb-4" style={{ color: TEXT }}>Settings</h2>
-      <div className="flex flex-col gap-4 lg:grid lg:grid-cols-3 lg:gap-4">
-        {groups.map(([title, items]) => (
-          <div key={title}>
-            <h3 className="text-[11px] font-bold uppercase tracking-widest mb-2" style={{ color: MUTED }}>{title}</h3>
-            <div className="rounded-2xl overflow-hidden" style={{ background: CARD, border: `1px solid ${BORDER}` }}>
-              {items.map((it, i) => (
-                <button key={it} className="w-full flex items-center justify-between px-4 py-3.5 text-left"
-                  style={{ borderTop: i ? `1px solid ${BORDER}` : 'none' }}>
-                  <span className="text-[14px]" style={{ color: TEXT }}>{it}</span>
-                  <ChevronRight size={16} style={{ color: MUTED }} />
-                </button>
+    <div className="px-4 lg:px-8 pt-5 pb-24 max-w-2xl">
+      <h2 className="font-bold text-[20px] mb-1" style={{ color: TEXT }}>Settings</h2>
+      <p className="text-[13px] mb-5" style={{ color: MUTED }}>Your profile and workspace for {niche.label}.</p>
+
+      {/* Profile section */}
+      <div className="rounded-2xl p-5 mb-4" style={{ background: CARD, border: `1px solid ${BORDER}` }}>
+        <div className="flex items-center justify-between mb-1">
+          <h3 className="font-bold text-[15px]" style={{ color: TEXT }}>Your Profile</h3>
+          {saved && (
+            <span className="text-[12px] font-semibold px-2.5 py-1 rounded-full"
+              style={{ background: 'rgba(34,197,94,0.15)', color: '#4ADE80' }}>Saved</span>
+          )}
+        </div>
+        <p className="text-[12px] mb-4" style={{ color: MUTED }}>
+          Used to personalize every email &amp; message. Saved on this device automatically.
+        </p>
+
+        <div className="flex flex-col gap-3">
+          <div>
+            <label className="block text-[12px] font-semibold mb-1.5" style={{ color: MUTED }}>Full name</label>
+            <input value={name} onChange={e => setName(e.target.value)} placeholder="Jordan Rivera" style={inputStyle} />
+          </div>
+          <div>
+            <label className="block text-[12px] font-semibold mb-1.5" style={{ color: MUTED }}>Business name</label>
+            <input value={biz} onChange={e => setBiz(e.target.value)} placeholder="Glow Studio" style={inputStyle} />
+          </div>
+          <div>
+            <label className="block text-[12px] font-semibold mb-1.5" style={{ color: MUTED }}>Email address</label>
+            <input value={email} onChange={e => setEmail(e.target.value)} type="email" placeholder="you@yourbusiness.com" style={inputStyle} />
+          </div>
+
+          <div>
+            <label className="block text-[12px] font-semibold mb-2" style={{ color: MUTED }}>Social handles</label>
+            <div className="flex flex-col gap-2">
+              {[
+                { label: 'Instagram', val: ig, set: setIg },
+                { label: 'TikTok',    val: tiktok, set: setTiktok },
+                { label: 'Facebook',  val: fb, set: setFb, ph: 'Your Page name' },
+                { label: 'X (Twitter)', val: tw, set: setTw },
+              ].map(s => (
+                <div key={s.label} className="flex items-center gap-2">
+                  <label className="text-[12px] w-24 shrink-0" style={{ color: MUTED }}>{s.label}</label>
+                  <input value={s.val} onChange={e => s.set(e.target.value)}
+                    placeholder={s.ph || '@yourhandle'} style={{ ...inputStyle }} />
+                </div>
               ))}
             </div>
           </div>
-        ))}
+        </div>
+
+        {/* Signature preview */}
+        <div className="mt-4 p-3 rounded-xl" style={{ background: CARD2, border: `1px solid ${BORDER}` }}>
+          <div className="text-[11px] font-bold mb-2" style={{ color: MUTED }}>Email signature preview</div>
+          <div className="text-[13px] font-semibold" style={{ color: TEXT }}>{name || 'Your Name'}</div>
+          <div className="text-[12px]" style={{ color: MUTED }}>{biz || 'Your Business'}</div>
+          <div className="text-[12px]" style={{ color: MUTED }}>{email}</div>
+        </div>
+
+        {/* Token reference */}
+        <div className="mt-3">
+          <div className="text-[11px] mb-1" style={{ color: MUTED }}>Tokens available in templates:</div>
+          <div className="flex flex-wrap gap-1.5">
+            {['{{name}}', '{{business}}', '{{email}}', '{{instagram}}', '{{tiktok}}'].map(t => (
+              <span key={t} className="px-2 py-0.5 rounded text-[11px] font-mono"
+                style={{ background: `${niche.accent}18`, color: niche.accent }}>{t}</span>
+            ))}
+          </div>
+        </div>
+
+        <button onClick={doSave} className="mt-4 px-5 py-2.5 rounded-xl font-semibold text-[13px] text-white"
+          style={{ background: niche.accent }}>
+          Save changes
+        </button>
       </div>
-      <div className="mt-8 text-center text-[12px]" style={{ color: MUTED }}>
-        NicheLead AI is built and operated by Genzic.AI ·{' '}
-        <a href="https://tanxusa.com" target="_blank" rel="noopener noreferrer" style={{ color: MUTED, textDecoration: 'underline' }}>
-          TanXUSA.com
-        </a>
+
+      {/* Live chat section */}
+      <div className="rounded-2xl p-5 mb-4" style={{ background: CARD, border: `1px solid ${BORDER}` }}>
+        <div className="flex items-center justify-between mb-1">
+          <h3 className="font-bold text-[15px]" style={{ color: TEXT }}>Live Chat Integration</h3>
+          <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full"
+            style={{ background: chatOn ? `${niche.accent}20` : FAINT, color: chatOn ? niche.accent : MUTED }}>
+            {chatOn ? 'On' : 'Off'}
+          </span>
+        </div>
+        <p className="text-[12px] mb-4" style={{ color: MUTED }}>Add a Tawk.to live-chat widget to your dashboard.</p>
+
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <div className="text-[13px] font-semibold" style={{ color: TEXT }}>Enable live chat widget</div>
+            <div className="text-[12px]" style={{ color: MUTED }}>Shows the chat bubble in the bottom-right corner.</div>
+          </div>
+          <button onClick={() => setChatOn(v => !v)}
+            className="relative rounded-full transition-colors"
+            style={{
+              width: 44, height: 24,
+              background: chatOn ? niche.accent : FAINT,
+              border: `1px solid ${BORDER}`,
+            }}>
+            <span className="absolute top-0.5 rounded-full transition-all"
+              style={{
+                width: 20, height: 20,
+                background: '#fff',
+                left: chatOn ? 22 : 2,
+              }} />
+          </button>
+        </div>
+
+        <div className="flex flex-col gap-3">
+          <div>
+            <label className="block text-[12px] font-semibold mb-1.5" style={{ color: MUTED }}>Tawk.to Property ID</label>
+            <input value={tawkId} onChange={e => setTawkId(e.target.value)}
+              placeholder="e.g. 5f9a1b2c3d4e5f6a7b8c9d0e" style={inputStyle} />
+          </div>
+          <div>
+            <label className="block text-[12px] font-semibold mb-1.5" style={{ color: MUTED }}>
+              Widget ID <span style={{ color: MUTED, fontWeight: 400 }}>(optional)</span>
+            </label>
+            <input value={widgetId} onChange={e => setWidgetId(e.target.value)}
+              placeholder="default" style={inputStyle} />
+          </div>
+        </div>
+        <p className="text-[11px] mt-3" style={{ color: MUTED }}>
+          Leads do not need a Tawk.to account. This widget will appear on your own website for live chat.
+        </p>
+      </div>
+
+      {/* Workspace status */}
+      <div className="rounded-2xl p-5" style={{ background: CARD, border: `1px solid ${BORDER}` }}>
+        <div className="flex items-center justify-between mb-1">
+          <h3 className="font-bold text-[15px]" style={{ color: TEXT }}>Workspace status</h3>
+          <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full"
+            style={{ background: 'rgba(34,197,94,0.15)', color: '#4ADE80' }}>Connected</span>
+        </div>
+        <p className="text-[13px] mb-3" style={{ color: MUTED }}>
+          Your workspace is fully configured. Lead discovery, AI scoring, and email &amp; SMS outreach are managed automatically.
+        </p>
+        <div className="flex items-center gap-2">
+          <div className="w-2 h-2 rounded-full" style={{ background: '#22C55E' }} />
+          <span className="text-[13px]" style={{ color: TEXT }}>All systems operational</span>
+        </div>
       </div>
     </div>
   )
@@ -574,7 +908,8 @@ function SettingsTab() {
 const NAV_TABS = [
   { key: 'dashboard', label: 'Dashboard', Icon: LayoutDashboard },
   { key: 'leads',     label: 'Leads',     Icon: Users },
-  { key: 'campaigns', label: 'Campaigns', Icon: Send },
+  { key: 'pipeline',  label: 'Pipeline',  Icon: GitBranch },
+  { key: 'campaigns', label: 'Campaigns', Icon: Megaphone },
   { key: 'analytics', label: 'Analytics', Icon: BarChart3 },
   { key: 'settings',  label: 'Settings',  Icon: Settings },
 ]
@@ -615,24 +950,26 @@ export default function Dashboard({ initialNiche, onBack }: { initialNiche: Nich
         {/* Row 1 */}
         <div className="flex items-center gap-2 px-4 pt-3 pb-2 lg:px-8">
           <button onClick={onBack}
-            className="shrink-0 flex items-center gap-1 text-[12px] font-semibold px-2.5 py-1.5 rounded-xl"
-            style={{ background: FAINT, color: MUTED }}>
-            <ArrowLeft size={14} /> Industries
+            className="shrink-0 p-2 rounded-xl"
+            style={{ background: FAINT }}>
+            <ArrowLeft size={16} style={{ color: MUTED }} />
           </button>
 
-          <div className="flex items-center gap-2 mx-1">
-            <div className="shrink-0 rounded-lg flex items-center justify-center"
-              style={{ width: 28, height: 28, background: niche.accent }}>
-              <NIcon size={15} color="#fff" strokeWidth={2.2} />
-            </div>
-            <div className="hidden sm:block">
-              <div className="font-bold text-[14px] leading-none" style={{ color: TEXT }}>{niche.label}</div>
-              <div className="text-[10px] mt-0.5" style={{ color: MUTED }}>Genzic.AI</div>
+          {/* Logo */}
+          <div className="flex items-center gap-2 shrink-0">
+            <div className="rounded-full flex items-center justify-center"
+              style={{ width: 32, height: 32, background: '#102019', boxShadow: 'inset 0 0 0 1px #1E3A2C' }}>
+              <Zap size={14} color="#22C55E" strokeWidth={2.4} />
             </div>
           </div>
 
+          <div className="min-w-0">
+            <div className="font-bold text-[14px] leading-none" style={{ color: TEXT }}>{niche.label}</div>
+            <div className="text-[10px] mt-0.5" style={{ color: MUTED }}>Genzic</div>
+          </div>
+
           {/* Niche pills */}
-          <div className="flex-1 flex gap-1.5 overflow-x-auto" style={{ scrollbarWidth: 'none' }}>
+          <div className="flex-1 flex gap-1.5 overflow-x-auto justify-end" style={{ scrollbarWidth: 'none' }}>
             {(Object.keys(NICHES) as NicheKey[]).map(k => {
               const n = NICHES[k]; const on = k === nicheKey
               const KIcon = NICHE_ICONS[k]
@@ -648,16 +985,14 @@ export default function Dashboard({ initialNiche, onBack }: { initialNiche: Nich
             })}
           </div>
 
-          <button className="shrink-0 relative p-1.5 ml-1">
-            <Bell size={18} style={{ color: MUTED }} />
-            <span className="absolute top-1.5 right-1.5 rounded-full"
-              style={{ width: 6, height: 6, background: niche.accent }} />
+          <button className="shrink-0 flex items-center gap-1.5 text-[12px] font-semibold px-2.5 py-1.5 rounded-xl ml-1"
+            style={{ background: FAINT, color: MUTED }}>
+            <User size={14} /> Profile
           </button>
-          <div className="shrink-0 rounded-full" style={{ width: 28, height: 28, background: FAINT }} />
         </div>
 
         {/* Row 2 — nav tabs */}
-        <div className="flex overflow-x-auto px-4 lg:px-8" style={{ scrollbarWidth: 'none' }}>
+        <nav className="flex overflow-x-auto px-4 lg:px-8" style={{ scrollbarWidth: 'none' }}>
           {NAV_TABS.map(t => {
             const on = t.key === tab
             const TIcon = t.Icon
@@ -671,7 +1006,7 @@ export default function Dashboard({ initialNiche, onBack }: { initialNiche: Nich
               </button>
             )
           })}
-        </div>
+        </nav>
       </header>
 
       {/* ── BODY ── */}
@@ -723,7 +1058,7 @@ export default function Dashboard({ initialNiche, onBack }: { initialNiche: Nich
             </div>
 
             {/* Lead cards */}
-            <section className="px-4 lg:px-8 pb-12 flex flex-col gap-3 lg:grid lg:grid-cols-2 xl:grid-cols-3 lg:gap-4">
+            <section className="px-4 lg:px-8 pb-24 flex flex-col gap-3 lg:grid lg:grid-cols-2 xl:grid-cols-3 lg:gap-4">
               {filteredLeads.map(lead => (
                 <LeadCard key={lead.name} lead={lead} niche={niche}
                   onProfile={() => setProfileLead(lead)}
@@ -734,10 +1069,28 @@ export default function Dashboard({ initialNiche, onBack }: { initialNiche: Nich
           </>
         )}
 
+        {tab === 'pipeline'  && <PipelineTab leads={leads} niche={niche} onProfile={l => setProfileLead(l)} />}
         {tab === 'campaigns' && <CampaignsTab niche={niche} />}
-        {tab === 'analytics'  && <AnalyticsTab niche={niche} />}
-        {tab === 'settings'   && <SettingsTab />}
+        {tab === 'analytics' && <AnalyticsTab niche={niche} leads={leads} />}
+        {tab === 'settings'  && <SettingsTab niche={niche} />}
       </main>
+
+      {/* ── BOTTOM NAV ── */}
+      <nav className="fixed bottom-0 left-0 right-0 z-30 flex"
+        style={{ background: CARD, borderTop: `1px solid ${BORDER}` }}>
+        {NAV_TABS.map(t => {
+          const on = t.key === tab
+          const TIcon = t.Icon
+          return (
+            <button key={t.key} onClick={() => setTab(t.key)}
+              className="flex-1 flex flex-col items-center justify-center py-2.5 gap-0.5 transition-colors"
+              style={{ color: on ? niche.accent : MUTED }}>
+              <TIcon size={20} />
+              <span className="text-[10px] font-semibold">{t.label}</span>
+            </button>
+          )
+        })}
+      </nav>
 
       {/* ── PANELS ── */}
       {profileLead && (
